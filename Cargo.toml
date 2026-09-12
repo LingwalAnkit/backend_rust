@@ -1,0 +1,24 @@
+[package]
+name = "axum_auth_backend"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+argon2 = "0.6.0"
+async-trait = "0.1.92"
+axum = "0.8.9"
+axum-extra = { version = "0.12.6", features = ["cookie", "typed-header"] }
+chrono = { version = "0.4.45", features = ["serde"] }
+dotenv = "0.15.0"
+jsonwebtoken = { version = "11.0.0", features = ["rust_crypto"] }
+lettre = "0.11.23"
+mongodb = "3.9.1"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+time = "0.3.55"
+tokio = { version = "1.53.1", features = ["full"] }
+tower = "0.5.3"
+tower-http = { version = "0.7.1", features = ["cors", "trace"] }
+tracing-subscriber = "0.3.23"
+uuid = { version = "1.26.0", features = ["serde", "v4"] }
+validator = { version = "0.21.0", features = ["derive"] }
