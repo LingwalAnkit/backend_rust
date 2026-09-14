@@ -1,7 +1,7 @@
 use mongodb::{Client, Database};
 
-pub async fn connect() -> Database {
-    let client = Client::with_uri_str("mongodb://localhost:27017")
+pub async fn connect(uri: &str) -> Database {
+    let client = Client::with_uri_str(uri)
         .await
         .expect("failed to connect to mongodb");
 
