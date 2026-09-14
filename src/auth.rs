@@ -44,13 +44,29 @@ pub struct AuthUser {
     pub username: String,
 }
 
+// Tell Axum how to create AuthUser
+// "If one of my routes asks for an AuthUser, I will tell you how to get it from the HTTP request."
+
 impl<S> FromRequestParts<S> for AuthUser
 where
     S: Send + Sync,
 {
     type Rejection = (StatusCode, String);
 
+    // HTTP request Information
+    // GET /me
+    // Authorization: Bearer eyJhbGci...
+    // Content-Type: application/json
+    // parts
+    // │
+    // ├── headers
+    // │     └── Authorization: Bearer <JWT>
+    // ├── method
+    // ├── URI
+    // └── ...
+
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        // Result<Authuser , (StatusCode, String)>
         let TypedHeader(Authorization(bearer)) = parts
             .extract::<TypedHeader<Authorization<Bearer>>>()
             .await
@@ -60,6 +76,8 @@ where
                     "missing or invalid authorization header".to_string(),
                 )
             })?;
+
+        // After the above function bearer contain the string "Bearer <JWT>"
 
         let token_data = decode::<Claims>(
             bearer.token(),
@@ -74,7 +92,7 @@ where
         })?;
 
         Ok(AuthUser {
-            username: token_data.claims.sub,
+            username: token_data.claims.sub, //
         })
     }
 }
