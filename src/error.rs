@@ -13,6 +13,7 @@ pub enum AppError {
     Unauthorized(String),
     UsernameTaken,
     InvalidCredentials,
+    InvalidRefreshToken,
 }
 
 impl IntoResponse for AppError {
@@ -45,6 +46,10 @@ impl IntoResponse for AppError {
                 "invalid username or password".to_string(),
             ),
             AppError::Unauthorized(msg) => (StatusCode::UNAUTHORIZED, msg),
+            AppError::InvalidRefreshToken => (
+                StatusCode::UNAUTHORIZED,
+                "Invalid refresh token".to_string(),
+            ),
         };
 
         (status, Json(json!({ "error": message }))).into_response()

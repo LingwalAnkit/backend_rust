@@ -6,7 +6,9 @@ use axum_extra::{
     headers::{Authorization, authorization::Bearer},
 };
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
+use rand::Rng;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 
 use crate::{error::AppError, state::AppState};
 
@@ -16,12 +18,15 @@ pub struct Claims {
     pub exp: usize,
 }
 
-pub fn create_token(username: &str, secret: &str) -> Result<String, jsonwebtoken::errors::Error> {
+pub const ACCESS_TOKEN_MINUTES: usize = 15;
+pub const REFRESH_TOKEN_EXPIRATION: i64 = 7;
+
+pub fn create_access_token(username: &str, secret: &str) -> Result<String, AppError> {
     let expiration = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_secs() as usize
-        + 60 * 60;
+        + 60 * ACCESS_TOKEN_MINUTES;
 
     let claims = Claims {
         sub: username.to_string(),
@@ -33,6 +38,26 @@ pub fn create_token(username: &str, secret: &str) -> Result<String, jsonwebtoken
         &claims,
         &EncodingKey::from_secret(secret.as_bytes()),
     )
+    .map_err(|e| AppError::Jwt(e))
+}
+
+pub fn generate_refresh_token() -> String {
+    let mut bytes = [0u8; 16];
+    rand::rng().fill_bytes(&mut bytes);
+    hex::encode(bytes)
+}
+
+pub fn hash_token(token: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(token.as_bytes());
+    hex::encode(hasher.finalize())
+}
+
+pub fn now_unix() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as i64
 }
 
 pub struct AuthUser {
