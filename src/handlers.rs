@@ -2,7 +2,7 @@ use argon2::{
     Argon2,
     password_hash::{PasswordHasher, PasswordVerifier, phc::PasswordHash},
 };
-use axum::{Json, extract::State};
+use axum::{Json, extract::State, http::StatusCode};
 use mongodb::bson::doc;
 use serde::{Deserialize, Serialize};
 
@@ -118,12 +118,18 @@ pub async fn refresh(
         .await?
         .ok_or(AppError::InvalidRefreshToken)?;
 
+    // RefreshToken {
+    //     username: "ankit",
+    //     token_hash: "...",
+    //     expires_at: ...
+    // }
+
     // rotation: this token is now spent, valid or not
     tokens
         .delete_one(doc! { "token_hash": &token_hash })
         .await?;
 
-    if stored.expires_at < auth::now_unix() {
+    if stored.expires_at < mongodb::bson::DateTime::now() {
         return Err(AppError::InvalidRefreshToken);
     }
 
@@ -133,12 +139,16 @@ pub async fn refresh(
 async fn issue_token_pair(state: &AppState, username: &str) -> Result<Json<TokenPair>, AppError> {
     let access_token = auth::create_access_token(username, &state.jwt_secret)?;
     let refresh_token = auth::generate_refresh_token();
+    let expires_at = mongodb::bson::DateTime::from_millis(
+        mongodb::bson::DateTime::now().timestamp_millis()
+            + auth::REFRESH_TOKEN_EXPIRATION * 24 * 60 * 60 * 1000,
+    );
 
     let record = RefreshToken {
         id: None,
         username: username.to_string(),
         token_hash: auth::hash_token(&refresh_token),
-        expires_at: auth::now_unix() + auth::REFRESH_TOKEN_EXPIRATION * 24 * 60 * 60,
+        expires_at,
     };
 
     state
@@ -155,4 +165,27 @@ async fn issue_token_pair(state: &AppState, username: &str) -> Result<Json<Token
 
 pub async fn me(auth_user: auth::AuthUser) -> Json<serde_json::Value> {
     Json(serde_json::json!({ "username": auth_user.username }))
+}
+
+#[derive(Deserialize)]
+pub struct LogoutRequest {
+    pub refresh_token: String,
+}
+
+pub async fn logout(
+    State(state): State<AppState>,
+    auth_user: auth::AuthUser,
+    Json(payload): Json<LogoutRequest>,
+) -> Result<StatusCode, AppError> {
+    let token_hash = auth::hash_token(&payload.refresh_token);
+
+    state
+        .db
+        .collection::<RefreshToken>("refresh_tokens")
+        .delete_one(doc! { "token_hash": &token_hash, "username": &auth_user.username })
+        .await?;
+
+    // Delete the refresh-token document where both the token hash AND username match.
+
+    Ok(StatusCode::NO_CONTENT)
 }

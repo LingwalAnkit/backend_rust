@@ -1,4 +1,4 @@
-use mongodb::bson::oid::ObjectId;
+use mongodb::bson::{DateTime as BSONDateTime, oid::ObjectId};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -15,5 +15,5 @@ pub struct RefreshToken {
     pub id: Option<ObjectId>,
     pub username: String,
     pub token_hash: String,
-    pub expires_at: i64,
+    pub expires_at: BSONDateTime,
 }

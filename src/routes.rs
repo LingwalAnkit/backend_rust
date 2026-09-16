@@ -13,5 +13,6 @@ pub fn create_router(state: AppState) -> Router {
         .route("/login", post(handlers::login))
         .route("/me", get(handlers::me))
         .route("/refresh", get(handlers::refresh))
+        .route("/logout", post(handlers::logout))
         .with_state(state)
 }
