@@ -84,19 +84,35 @@ pub async fn login(
     State(state): State<AppState>,
     Json(payload): Json<LoginRequest>,
 ) -> Result<Json<TokenPair>, AppError> {
-    let users = state.db.collection::<User>("users");
+    if state.rate_limt.is_locked_out(&payload.username).await {
+        return Err(AppError::TooManyAttempts);
+    }
 
+    let users = state.db.collection::<User>("users");
     let user = users
         .find_one(doc! { "username": &payload.username })
-        .await?
-        .ok_or(AppError::InvalidCredentials)?;
+        .await?;
+
+    let user = match user {
+        Some(u) => u,
+        None => {
+            state.rate_limt.record_failure(&payload.username).await;
+            return Err(AppError::InvalidCredentials);
+        }
+    };
 
     let parsed_hash =
         PasswordHash::new(&user.password_hash).map_err(|e| AppError::Hash(e.into()))?;
 
-    Argon2::default()
+    if Argon2::default()
         .verify_password(payload.password.as_bytes(), &parsed_hash)
-        .map_err(|_| AppError::InvalidCredentials)?;
+        .is_err()
+    {
+        state.rate_limt.record_failure(&payload.username).await;
+        return Err(AppError::InvalidCredentials);
+    }
+
+    state.rate_limt.clear(&payload.username).await;
 
     issue_token_pair(&state, &payload.username).await
 }

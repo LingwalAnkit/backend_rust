@@ -3,6 +3,7 @@ mod db;
 mod error;
 mod handlers;
 mod models;
+mod rate_limit;
 mod routes;
 mod state;
 
@@ -17,7 +18,11 @@ async fn main() {
         std::env::var("MONGODB_URI").unwrap_or_else(|_| "mongodb://localhost:27017".to_string());
 
     let db = db::connect(&mongo_uri).await;
-    let state = AppState { db, jwt_secret };
+    let state = AppState {
+        db,
+        jwt_secret,
+        rate_limt: rate_limit::LoginAttempts::new(),
+    };
 
     let app = routes::create_router(state);
 

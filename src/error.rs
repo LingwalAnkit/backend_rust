@@ -14,6 +14,7 @@ pub enum AppError {
     UsernameTaken,
     InvalidCredentials,
     InvalidRefreshToken,
+    TooManyAttempts,
 }
 
 impl IntoResponse for AppError {
@@ -49,6 +50,10 @@ impl IntoResponse for AppError {
             AppError::InvalidRefreshToken => (
                 StatusCode::UNAUTHORIZED,
                 "Invalid refresh token".to_string(),
+            ),
+            AppError::TooManyAttempts => (
+                StatusCode::TOO_MANY_REQUESTS,
+                "Too many request attempts".to_string(),
             ),
         };
 
